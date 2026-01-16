@@ -71,6 +71,8 @@ void OccViewportWidget::addBox()
   m_context->Display(ais, Standard_True);
 
   m_view->FitAll();
+  //Qt 负责“什么时候该刷新”（事件），也就是什么实际进到addBox槽函数
+  // 你在这些回调里调用 Redraw()，OCCT 负责“怎么刷新”（OpenGL 渲染)
   m_view->Redraw();
 }
 
