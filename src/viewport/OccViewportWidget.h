@@ -15,7 +15,10 @@ public:
   ~OccViewportWidget() override;
 
 public slots:
+//槽函数，由对应信号触发
   void fitAll();
+  void addBox();
+  void addSphere();
 
 protected:
   void paintEvent(QPaintEvent* event) override;

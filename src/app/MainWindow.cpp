@@ -24,5 +24,19 @@ MainWindow::MainWindow(QWidget* parent)
 
   auto* toolbar = addToolBar(tr("View"));
   toolbar->addAction(fitAllAction);
+
+  auto* createMenu = menuBar()->addMenu(tr("Create"));
+  auto* createBoxAction = new QAction(tr("Box"), this);
+  connect(createBoxAction, &QAction::triggered, m_viewport, &OccViewportWidget::addBox);
+  createMenu->addAction(createBoxAction);
+
+  auto* createSphereAction = new QAction(tr("Sphere"), this);
+  connect(createSphereAction, &QAction::triggered, m_viewport, &OccViewportWidget::addSphere);
+  createMenu->addAction(createSphereAction);
+
+  auto* createToolbar = addToolBar(tr("Create"));
+  createToolbar->addAction(createBoxAction);
+  createToolbar->addAction(createSphereAction);
+
 }
 

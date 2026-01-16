@@ -8,6 +8,9 @@
 #include <WNT_Window.hxx>
 
 #include <AIS_Trihedron.hxx>
+#include <AIS_Shape.hxx>
+#include <BRepPrimAPI_MakeBox.hxx>
+#include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <gp_Ax2.hxx>
 
@@ -30,6 +33,43 @@ void OccViewportWidget::fitAll()
   {
     return;
   }
+  m_view->FitAll();
+  m_view->Redraw();
+}
+
+void OccViewportWidget::addSphere()
+{
+  if (m_context.IsNull() || m_view.IsNull())
+  {
+    return;
+  }
+  
+  double r = 20.;
+  TopoDS_Shape shape = BRepPrimAPI_MakeSphere(r);
+  Handle(AIS_Shape) ais = new AIS_Shape(shape);
+  m_context->Display(ais, Standard_True);
+
+  m_view->FitAll();
+  m_view->Redraw();
+
+}
+
+void OccViewportWidget::addBox()
+{
+  if (m_context.IsNull() || m_view.IsNull())
+  {
+    return;
+  }
+
+  // Default size in "model units" (you can treat as mm).
+  const double dx = 100.0;
+  const double dy = 80.0;
+  const double dz = 60.0;
+
+  TopoDS_Shape shape = BRepPrimAPI_MakeBox(dx, dy, dz).Shape();
+  Handle(AIS_Shape) ais = new AIS_Shape(shape);
+  m_context->Display(ais, Standard_True);
+
   m_view->FitAll();
   m_view->Redraw();
 }
