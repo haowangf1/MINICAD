@@ -1,10 +1,14 @@
 #include "OccViewportWidget.h"
 
+#include "model/Document.h"
+#include "model/SceneObject.h"
+
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QPaintEngine>
 #include <QShowEvent>
 #include <QApplication>
+#include <QFileInfo>
 
 #include <Aspect_DisplayConnection.hxx>
 #include <OpenGl_GraphicDriver.hxx>
@@ -20,6 +24,7 @@
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Face.hxx>
+#include <TopLoc_Location.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
@@ -64,6 +69,11 @@ OccViewportWidget::OccViewportWidget(QWidget* parent)
 }
 
 OccViewportWidget::~OccViewportWidget() = default;
+
+void OccViewportWidget::setDocument(Document* doc)
+{
+  m_doc = doc;
+}
 
 QPaintEngine* OccViewportWidget::paintEngine() const
 {
@@ -131,45 +141,104 @@ void OccViewportWidget::addBox()
   m_view->Redraw();
 }
 
-bool OccViewportWidget::importStep(const QString& filePath)
+bool OccViewportWidget::importStepToObject(const QString& filePath, SceneObject& outObj, QString* outError) const
 {
-  if (m_context.IsNull() || m_view.IsNull())
-  {
-    return false;
-  }
-
   STEPControl_Reader reader;
   const IFSelect_ReturnStatus status = reader.ReadFile(filePath.toLocal8Bit().constData());
   if (status != IFSelect_RetDone)
   {
+    if (outError) { *outError = "STEP reader: ReadFile failed"; }
     return false;
   }
 
   // Transfer all roots into OCCT shapes.
   if (reader.TransferRoots() <= 0)
   {
+    if (outError) { *outError = "STEP reader: TransferRoots returned 0"; }
     return false;
   }
 
   TopoDS_Shape shape = reader.OneShape();
   if (shape.IsNull())
   {
+    if (outError) { *outError = "STEP reader: OneShape is null"; }
     return false;
   }
 
+  outObj = SceneObject{};
+  outObj.id = 0;
+  outObj.type = "STEP";
+  const QString base = QFileInfo(filePath).completeBaseName();
+  outObj.name = base.isEmpty() ? QString("STEP%1").arg(++m_stepCounter)
+                               : base;
+  outObj.shape = shape;
+  outObj.trsf = gp_Trsf(); // identity
+  return true;
+}
+
+bool OccViewportWidget::displayDocumentObject(unsigned long long id)
+{
+  if (m_doc == nullptr || m_context.IsNull() || m_view.IsNull())
+  {
+    return false;
+  }
+
+  const auto objOpt = m_doc->getObject(id);
+  if (!objOpt.has_value())
+  {
+    return false;
+  }
+  const SceneObject& obj = *objOpt;
+  if (obj.shape.IsNull())
+  {
+    return false;
+  }
+
+  // Remove existing display if any.
+  (void)removeDocumentObject(id);
+
+  TopoDS_Shape shapeToDisplay = obj.shape;
+  // Apply local transform if any.
+  shapeToDisplay = shapeToDisplay.Located(TopLoc_Location(obj.trsf));
+
   // Ensure triangulation exists for shaded display (mesh each face).
-  for (TopExp_Explorer exp(shape, TopAbs_FACE); exp.More(); exp.Next())
+  for (TopExp_Explorer exp(shapeToDisplay, TopAbs_FACE); exp.More(); exp.Next())
   {
     const TopoDS_Face& face = TopoDS::Face(exp.Current());
     BRepMesh_IncrementalMesh(face, 0.5);
   }
 
-  Handle(AIS_Shape) ais = new AIS_Shape(shape);
-  m_objectNames[ais.get()] = QString("STEP%1").arg(++m_stepCounter);
-  m_context->Display(ais, AIS_Shaded, 0, Standard_True);
+  Handle(AIS_Shape) ais = new AIS_Shape(shapeToDisplay);
+  m_idToAis[id] = ais;
+  m_aisToId[ais.get()] = id;
+  // Keep name around for property panel fallback.
+  m_objectNames[ais.get()] = obj.name;
 
+  m_context->Display(ais, AIS_Shaded, 0, Standard_True);
   m_view->FitAll();
   m_view->Redraw();
+  return true;
+}
+
+bool OccViewportWidget::removeDocumentObject(unsigned long long id)
+{
+  if (m_context.IsNull())
+  {
+    return false;
+  }
+  auto it = m_idToAis.find(id);
+  if (it == m_idToAis.end())
+  {
+    return false;
+  }
+  const Handle(AIS_InteractiveObject) obj = it->second;
+  if (!obj.IsNull())
+  {
+    m_context->Remove(obj, Standard_True);
+    m_objectNames.erase(obj.get());
+    m_aisToId.erase(obj.get());
+  }
+  m_idToAis.erase(it);
   return true;
 }
 
@@ -199,12 +268,32 @@ void OccViewportWidget::emitSelectionInfo()
 
   const void* key = obj.get();
   QString name = "Unnamed";
-  if (auto it = m_objectNames.find(key); it != m_objectNames.end())
+  QString type;
+
+  // If object is tracked by Document id, prefer Document metadata.
+  if (m_doc != nullptr)
   {
-    name = it->second;
+    if (auto itId = m_aisToId.find(key); itId != m_aisToId.end())
+    {
+      const auto docObj = m_doc->getObject(itId->second);
+      if (docObj.has_value())
+      {
+        name = docObj->name;
+        type = docObj->type;
+      }
+    }
   }
 
-  QString type = QString::fromLatin1(obj->DynamicType()->Name());
+  // Fallback to local naming (used for primitives created before commandization).
+  if (type.isEmpty())
+  {
+    if (auto it = m_objectNames.find(key); it != m_objectNames.end())
+    {
+      name = it->second;
+    }
+    type = QString::fromLatin1(obj->DynamicType()->Name());
+  }
+
   if (Handle(AIS_Shape) sh = Handle(AIS_Shape)::DownCast(obj); !sh.IsNull())
   {
     type += QString(" (%1)").arg(shapeTypeToString(sh->Shape().ShapeType()));

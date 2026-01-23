@@ -29,6 +29,16 @@ add_executable(minicad WIN32
   src/main.cpp
   src/app/MainWindow.h
   src/app/MainWindow.cpp
+  src/commands/ICommand.h
+  src/commands/CommandManager.h
+  src/commands/CommandManager.cpp
+  src/commands/CreatePrimitiveCommand.h
+  src/commands/CreatePrimitiveCommand.cpp
+  src/commands/ImportStepCommand.h
+  src/commands/ImportStepCommand.cpp
+  src/model/SceneObject.h
+  src/model/Document.h
+  src/model/Document.cpp
   src/viewport/OccViewportWidget.h
   src/viewport/OccViewportWidget.cpp
 )

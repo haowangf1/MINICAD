@@ -4,6 +4,8 @@
 
 class OccViewportWidget;
 class QLineEdit;
+class Document;
+class CommandManager;
 
 class MainWindow final : public QMainWindow
 {
@@ -15,10 +17,19 @@ public:
 private slots:
   void onSelectionInfoChanged(const QString& name, const QString& type);
   void onImportStep();
+  void onCreateBox();
+  void onCreateSphere();
+  void updateUndoRedoActions();
 
 private:
   OccViewportWidget* m_viewport = nullptr;
   QLineEdit* m_nameField = nullptr;
   QLineEdit* m_typeField = nullptr;
+
+  Document* m_doc = nullptr;
+  CommandManager* m_cmdMgr = nullptr;
+
+  QAction* m_undoAction = nullptr;
+  QAction* m_redoAction = nullptr;
 };
 
