@@ -44,6 +44,7 @@ private:
   Handle(AIS_InteractiveContext) m_context;
 
   QPoint m_lastPos;
+  QPoint m_pressPos;
   enum class DragMode
   {
     None,

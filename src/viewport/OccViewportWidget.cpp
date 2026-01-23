@@ -177,18 +177,24 @@ void OccViewportWidget::showEvent(QShowEvent* event)
 void OccViewportWidget::mousePressEvent(QMouseEvent* event)
 {
   m_lastPos = event->pos();
+  m_pressPos = m_lastPos;
 
-  if (event->button() == Qt::LeftButton)
+  if (event->button() == Qt::LeftButton && (event->modifiers() & Qt::AltModifier))
   {
     m_dragMode = DragMode::Rotate;
     if (!m_view.IsNull())
     {
-      m_view->StartRotation(m_lastPos.x(), m_lastPos.y());
+      const int dpr = devicePixelRatio();
+      m_view->StartRotation(m_lastPos.x() * dpr, m_lastPos.y() * dpr);
     }
   }
   else if (event->button() == Qt::MiddleButton)
   {
     m_dragMode = DragMode::Pan;
+  }
+  else
+  {
+    m_dragMode = DragMode::None;
   }
 
   QWidget::mousePressEvent(event);
@@ -207,14 +213,26 @@ void OccViewportWidget::mouseMoveEvent(QMouseEvent* event)
 
   if (m_dragMode == DragMode::Rotate && (event->buttons() & Qt::LeftButton))
   {
-    m_view->Rotation(p.x(), p.y());
+    const int dpr = devicePixelRatio();
+    m_view->Rotation(p.x() * dpr, p.y() * dpr);
     m_view->Redraw();
   }
   else if (m_dragMode == DragMode::Pan && (event->buttons() & Qt::MiddleButton))
   {
     const QPoint delta = p - m_lastPos;
-    m_view->Pan(delta.x(), -delta.y());
+    const int dpr = devicePixelRatio();
+    m_view->Pan(delta.x() * dpr, -delta.y() * dpr);
     m_view->Redraw();
+  }
+  else
+  {
+    // Hover pre-highlight (dynamic highlight) on mouse move when not dragging.
+    if (!m_context.IsNull())
+    {
+      const int dpr = devicePixelRatio();
+      m_context->MoveTo(p.x() * dpr, p.y() * dpr, m_view, Standard_True);
+      m_view->Redraw();
+    }
   }
 
   m_lastPos = p;
@@ -223,6 +241,23 @@ void OccViewportWidget::mouseMoveEvent(QMouseEvent* event)
 
 void OccViewportWidget::mouseReleaseEvent(QMouseEvent* event)
 {
+  // Left click select (without Alt) when movement is small.
+  if (event->button() == Qt::LeftButton && !(event->modifiers() & Qt::AltModifier))
+  {
+    const QPoint releasePos = event->pos();
+    constexpr int kClickThresholdPx = 3; // in Qt logical pixels
+    if ((releasePos - m_pressPos).manhattanLength() <= kClickThresholdPx
+        && !m_context.IsNull() && !m_view.IsNull())
+    {
+      const int dpr = devicePixelRatio();
+      // Ensure detection at click point is up-to-date, then select.
+      m_context->MoveTo(releasePos.x() * dpr, releasePos.y() * dpr, m_view, Standard_True);
+      m_context->Select(Standard_True);
+      m_context->UpdateCurrentViewer();
+      m_view->Redraw();
+    }
+  }
+
   m_dragMode = DragMode::None;
   QWidget::mouseReleaseEvent(event);
 }
