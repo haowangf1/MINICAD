@@ -17,10 +17,15 @@
 #include <AIS_ListOfInteractive.hxx>
 #include <AIS_ListIteratorOfListOfInteractive.hxx>
 #include <TopAbs_ShapeEnum.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopoDS.hxx>
+#include <TopoDS_Face.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <gp_Ax2.hxx>
+#include <STEPControl_Reader.hxx>
+#include <IFSelect_ReturnStatus.hxx>
 
 namespace
 {
@@ -124,6 +129,48 @@ void OccViewportWidget::addBox()
 
   m_view->FitAll();
   m_view->Redraw();
+}
+
+bool OccViewportWidget::importStep(const QString& filePath)
+{
+  if (m_context.IsNull() || m_view.IsNull())
+  {
+    return false;
+  }
+
+  STEPControl_Reader reader;
+  const IFSelect_ReturnStatus status = reader.ReadFile(filePath.toLocal8Bit().constData());
+  if (status != IFSelect_RetDone)
+  {
+    return false;
+  }
+
+  // Transfer all roots into OCCT shapes.
+  if (reader.TransferRoots() <= 0)
+  {
+    return false;
+  }
+
+  TopoDS_Shape shape = reader.OneShape();
+  if (shape.IsNull())
+  {
+    return false;
+  }
+
+  // Ensure triangulation exists for shaded display (mesh each face).
+  for (TopExp_Explorer exp(shape, TopAbs_FACE); exp.More(); exp.Next())
+  {
+    const TopoDS_Face& face = TopoDS::Face(exp.Current());
+    BRepMesh_IncrementalMesh(face, 0.5);
+  }
+
+  Handle(AIS_Shape) ais = new AIS_Shape(shape);
+  m_objectNames[ais.get()] = QString("STEP%1").arg(++m_stepCounter);
+  m_context->Display(ais, AIS_Shaded, 0, Standard_True);
+
+  m_view->FitAll();
+  m_view->Redraw();
+  return true;
 }
 
 void OccViewportWidget::emitSelectionInfo()

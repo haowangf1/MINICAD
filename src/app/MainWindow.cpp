@@ -3,9 +3,11 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QDockWidget>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QToolBar>
 
 #include "viewport/OccViewportWidget.h"
@@ -17,6 +19,12 @@ MainWindow::MainWindow(QWidget* parent)
 
   m_viewport = new OccViewportWidget(this);
   setCentralWidget(m_viewport);
+
+  // File menu
+  auto* fileMenu = menuBar()->addMenu(tr("File"));
+  auto* importStepAction = new QAction(tr("Import STEP..."), this);
+  connect(importStepAction, &QAction::triggered, this, &MainWindow::onImportStep);
+  fileMenu->addAction(importStepAction);
 
   // Right-side property panel (Name / Type)
   auto* dock = new QDockWidget(tr("Properties"), this);
@@ -89,5 +97,25 @@ void MainWindow::onSelectionInfoChanged(const QString& name, const QString& type
   if (m_typeField)
   {
     m_typeField->setText(type);
+  }
+}
+
+void MainWindow::onImportStep()
+{
+  const QString filePath = QFileDialog::getOpenFileName(
+      this,
+      tr("Import STEP"),
+      QString(),
+      tr("STEP Files (*.step *.stp);;All Files (*.*)"));
+
+  if (filePath.isEmpty())
+  {
+    return;
+  }
+
+  if (!m_viewport->importStep(filePath))
+  {
+    QMessageBox::warning(this, tr("Import STEP"),
+                         tr("Failed to import STEP file:\n%1").arg(filePath));
   }
 }

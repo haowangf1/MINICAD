@@ -14,6 +14,7 @@ public:
 
 private slots:
   void onSelectionInfoChanged(const QString& name, const QString& type);
+  void onImportStep();
 
 private:
   OccViewportWidget* m_viewport = nullptr;

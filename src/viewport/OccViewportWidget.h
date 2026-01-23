@@ -23,6 +23,7 @@ public slots:
   void fitAll();
   void addBox();
   void addSphere();
+  bool importStep(const QString& filePath);
   void setWireframe();
   void setShaded();
 
@@ -53,6 +54,7 @@ private:
 
   int m_boxCounter = 0;
   int m_sphereCounter = 0;
+  int m_stepCounter = 0;
   std::unordered_map<const void*, QString> m_objectNames;
 
   QPoint m_lastPos;
