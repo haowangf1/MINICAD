@@ -12,6 +12,8 @@
 
 #include <AIS_Trihedron.hxx>
 #include <AIS_Shape.hxx>
+#include <AIS_DisplayMode.hxx>
+#include <BRepMesh_IncrementalMesh.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
@@ -59,8 +61,10 @@ void OccViewportWidget::addSphere()
   
   double r = 20.;
   TopoDS_Shape shape = BRepPrimAPI_MakeSphere(r);
+  // Ensure triangulation exists for shaded display.
+  BRepMesh_IncrementalMesh(shape, 0.5);
   Handle(AIS_Shape) ais = new AIS_Shape(shape);
-  m_context->Display(ais, Standard_True);
+  m_context->Display(ais, AIS_Shaded, 0, Standard_True);
 
   m_view->FitAll();
   m_view->Redraw();
@@ -78,8 +82,10 @@ void OccViewportWidget::addBox()
   const double dz = 60.0;
 
   TopoDS_Shape shape = BRepPrimAPI_MakeBox(dx, dy, dz).Shape();
+  // Ensure triangulation exists for shaded display.
+  BRepMesh_IncrementalMesh(shape, 0.5);
   Handle(AIS_Shape) ais = new AIS_Shape(shape);
-  m_context->Display(ais, Standard_True);
+  m_context->Display(ais, AIS_Shaded, 0, Standard_True);
 
   m_view->FitAll();
   m_view->Redraw();
@@ -215,6 +221,8 @@ void OccViewportWidget::initOcc()
   m_viewer->SetLightOn();
 
   m_context = new AIS_InteractiveContext(m_viewer);
+  // Default to shaded mode so primitives show triangles (not wireframe).
+  m_context->SetDisplayMode(AIS_Shaded, Standard_False);
 
   m_view = m_viewer->CreateView();
   m_view->SetBackgroundColor(Quantity_NOC_GRAY20);
