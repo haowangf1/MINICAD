@@ -14,6 +14,8 @@
 #include <AIS_Shape.hxx>
 #include <AIS_DisplayMode.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
+#include <AIS_ListOfInteractive.hxx>
+#include <AIS_ListIteratorOfListOfInteractive.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
@@ -52,6 +54,16 @@ void OccViewportWidget::fitAll()
   m_view->Redraw();
 }
 
+void OccViewportWidget::setWireframe()
+{
+  applyDisplayMode(AIS_WireFrame);
+}
+
+void OccViewportWidget::setShaded()
+{
+  applyDisplayMode(AIS_Shaded);
+}
+
 void OccViewportWidget::addSphere()
 {
   if (m_context.IsNull() || m_view.IsNull())
@@ -88,6 +100,33 @@ void OccViewportWidget::addBox()
   m_context->Display(ais, AIS_Shaded, 0, Standard_True);
 
   m_view->FitAll();
+  m_view->Redraw();
+}
+
+void OccViewportWidget::applyDisplayMode(int aisDisplayMode)
+{
+  if (m_context.IsNull() || m_view.IsNull())
+  {
+    return;
+  }
+
+  // Update default for future objects.
+  m_context->SetDisplayMode(aisDisplayMode, Standard_False);
+
+  // Apply to all currently displayed objects.
+  AIS_ListOfInteractive displayed;
+  m_context->DisplayedObjects(displayed);
+  for (AIS_ListIteratorOfListOfInteractive it(displayed); it.More(); it.Next())
+  {
+    const Handle(AIS_InteractiveObject)& obj = it.Value();
+    if (!obj.IsNull())
+    {
+      m_context->SetDisplayMode(obj, aisDisplayMode, Standard_False);
+    }
+  }
+
+  // Force immediate redraw.
+  m_context->UpdateCurrentViewer();
   m_view->Redraw();
 }
 

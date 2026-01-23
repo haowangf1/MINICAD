@@ -20,6 +20,8 @@ public slots:
   void fitAll();
   void addBox();
   void addSphere();
+  void setWireframe();
+  void setShaded();
 
 protected:
   QPaintEngine* paintEngine() const override;
@@ -34,6 +36,7 @@ protected:
 
 private:
   void initOcc();
+  void applyDisplayMode(int aisDisplayMode);
 
 private:
   Handle(V3d_Viewer) m_viewer;
