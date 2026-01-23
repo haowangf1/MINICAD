@@ -2,10 +2,13 @@
 
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QPaintEngine>
+#include <QShowEvent>
+#include <QApplication>
 
 #include <Aspect_DisplayConnection.hxx>
 #include <OpenGl_GraphicDriver.hxx>
-#include <WNT_Window.hxx>
+#include <Aspect_NeutralWindow.hxx>
 
 #include <AIS_Trihedron.hxx>
 #include <AIS_Shape.hxx>
@@ -17,15 +20,25 @@
 OccViewportWidget::OccViewportWidget(QWidget* parent)
   : QWidget(parent)
 {
-  // OCC uses its own OpenGL rendering; avoid Qt painting over it.
+  // 1. WA_NativeWindow: 确保该 Widget 拥有独立的 HWND
+  setAttribute(Qt::WA_NativeWindow);
+  // 2. WA_PaintOnScreen: 禁用 Qt 的后台缓冲，允许 OCCT 直接绘制
+  setAttribute(Qt::WA_PaintOnScreen);
   setAttribute(Qt::WA_NoSystemBackground);
   setAttribute(Qt::WA_OpaquePaintEvent);
+  
   setMouseTracking(true);
 
+  // 初始化 OCCT
   initOcc();
 }
 
 OccViewportWidget::~OccViewportWidget() = default;
+
+QPaintEngine* OccViewportWidget::paintEngine() const
+{
+  return nullptr;
+}
 
 void OccViewportWidget::fitAll()
 {
@@ -51,7 +64,6 @@ void OccViewportWidget::addSphere()
 
   m_view->FitAll();
   m_view->Redraw();
-
 }
 
 void OccViewportWidget::addBox()
@@ -61,7 +73,6 @@ void OccViewportWidget::addBox()
     return;
   }
 
-  // Default size in "model units" (you can treat as mm).
   const double dx = 100.0;
   const double dy = 80.0;
   const double dz = 60.0;
@@ -71,14 +82,11 @@ void OccViewportWidget::addBox()
   m_context->Display(ais, Standard_True);
 
   m_view->FitAll();
-  //Qt 负责“什么时候该刷新”（事件），也就是什么实际进到addBox槽函数
-  // 你在这些回调里调用 Redraw()，OCCT 负责“怎么刷新”（OpenGL 渲染)
   m_view->Redraw();
 }
 
-void OccViewportWidget::paintEvent(QPaintEvent* event)
+void OccViewportWidget::paintEvent(QPaintEvent* /*event*/)
 {
-  QWidget::paintEvent(event);
   if (!m_view.IsNull())
   {
     m_view->Redraw();
@@ -90,7 +98,34 @@ void OccViewportWidget::resizeEvent(QResizeEvent* event)
   QWidget::resizeEvent(event);
   if (!m_view.IsNull())
   {
+    const int valWidth = width() * devicePixelRatio();
+    const int valHeight = height() * devicePixelRatio();
+    
+    // 使用 Handle::DownCast 将 Aspect_Window 安全转换为 Aspect_NeutralWindow
+    Handle(Aspect_NeutralWindow) neutralWindow = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
+    if (!neutralWindow.IsNull())
+    {
+      neutralWindow->SetSize(valWidth, valHeight);
+    }
     m_view->MustBeResized();
+  }
+}
+
+void OccViewportWidget::showEvent(QShowEvent* event)
+{
+  QWidget::showEvent(event);
+  if (!m_view.IsNull())
+  {
+    const int valWidth = width() * devicePixelRatio();
+    const int valHeight = height() * devicePixelRatio();
+    
+    Handle(Aspect_NeutralWindow) neutralWindow = Handle(Aspect_NeutralWindow)::DownCast(m_view->Window());
+    if (!neutralWindow.IsNull())
+    {
+      neutralWindow->SetSize(valWidth, valHeight);
+    }
+    m_view->MustBeResized();
+    m_view->Redraw();
   }
 }
 
@@ -162,7 +197,6 @@ void OccViewportWidget::wheelEvent(QWheelEvent* event)
     return;
   }
 
-  // Use rectangle zoom around cursor. It's simple and widely compatible across OCCT versions.
   const QPoint p = event->position().toPoint();
   const int step = (delta > 0) ? -60 : 60;
   m_view->Zoom(p.x(), p.y(), p.x() + step, p.y() + step);
@@ -185,19 +219,27 @@ void OccViewportWidget::initOcc()
   m_view = m_viewer->CreateView();
   m_view->SetBackgroundColor(Quantity_NOC_GRAY20);
 
-  // Bind OCC view to this Qt widget native window (HWND on Windows).
-  const Aspect_Handle hwnd = reinterpret_cast<Aspect_Handle>(winId());
-  Handle(WNT_Window) window = new WNT_Window(hwnd);
+  // 使用 Aspect_NeutralWindow 代替 WNT_Window
+  Handle(Aspect_NeutralWindow) window = new Aspect_NeutralWindow();
+  
+  // 绑定原生的 HWND
+  window->SetNativeHandle((Aspect_Drawable)winId());
+  
+  // 设置初始尺寸（处理 DPI）
+  const int valWidth = width() * devicePixelRatio();
+  const int valHeight = height() * devicePixelRatio();
+  window->SetSize(valWidth, valHeight);
+
   m_view->SetWindow(window);
   if (!window->IsMapped())
   {
     window->Map();
   }
+  
+  m_view->MustBeResized();
 
-  // Show a small trihedron (axis widget) so you know the view is alive.
   m_view->TriedronDisplay(Aspect_TOTP_LEFT_LOWER, Quantity_NOC_WHITE, 0.08, V3d_ZBUFFER);
 
-  // Also add a trihedron object into the scene (optional but nice for confidence).
   Handle(Geom_Axis2Placement) placement = new Geom_Axis2Placement(gp_Ax2());
   Handle(AIS_Trihedron) aisTrihedron = new AIS_Trihedron(placement);
   m_context->Display(aisTrihedron, Standard_False);
@@ -205,4 +247,3 @@ void OccViewportWidget::initOcc()
   m_view->FitAll();
   m_view->Redraw();
 }
-

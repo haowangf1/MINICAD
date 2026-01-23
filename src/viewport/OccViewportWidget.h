@@ -6,6 +6,8 @@
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
 
+class QPaintEngine;
+
 class OccViewportWidget final : public QWidget
 {
   Q_OBJECT
@@ -15,14 +17,15 @@ public:
   ~OccViewportWidget() override;
 
 public slots:
-//槽函数，由对应信号触发
   void fitAll();
   void addBox();
   void addSphere();
 
 protected:
+  QPaintEngine* paintEngine() const override;
   void paintEvent(QPaintEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
+  void showEvent(QShowEvent* event) override;
 
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
@@ -45,4 +48,3 @@ private:
     Pan
   } m_dragMode = DragMode::None;
 };
-
