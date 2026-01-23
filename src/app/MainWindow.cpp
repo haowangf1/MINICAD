@@ -2,6 +2,9 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QDockWidget>
+#include <QFormLayout>
+#include <QLineEdit>
 #include <QMenuBar>
 #include <QToolBar>
 
@@ -14,6 +17,24 @@ MainWindow::MainWindow(QWidget* parent)
 
   m_viewport = new OccViewportWidget(this);
   setCentralWidget(m_viewport);
+
+  // Right-side property panel (Name / Type)
+  auto* dock = new QDockWidget(tr("Properties"), this);
+  dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+  auto* dockBody = new QWidget(dock);
+  auto* form = new QFormLayout(dockBody);
+  m_nameField = new QLineEdit(dockBody);
+  m_typeField = new QLineEdit(dockBody);
+  m_nameField->setReadOnly(true);
+  m_typeField->setReadOnly(true);
+  form->addRow(tr("Name"), m_nameField);
+  form->addRow(tr("Type"), m_typeField);
+  dockBody->setLayout(form);
+  dock->setWidget(dockBody);
+  addDockWidget(Qt::RightDockWidgetArea, dock);
+
+  connect(m_viewport, &OccViewportWidget::selectionInfoChanged,
+          this, &MainWindow::onSelectionInfoChanged);
 
   auto* viewMenu = menuBar()->addMenu(tr("View"));
   auto* fitAllAction = new QAction(tr("Fit All"), this);
@@ -59,3 +80,14 @@ MainWindow::MainWindow(QWidget* parent)
 
 }
 
+void MainWindow::onSelectionInfoChanged(const QString& name, const QString& type)
+{
+  if (m_nameField)
+  {
+    m_nameField->setText(name);
+  }
+  if (m_typeField)
+  {
+    m_typeField->setText(type);
+  }
+}

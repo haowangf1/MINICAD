@@ -16,10 +16,31 @@
 #include <BRepMesh_IncrementalMesh.hxx>
 #include <AIS_ListOfInteractive.hxx>
 #include <AIS_ListIteratorOfListOfInteractive.hxx>
+#include <TopAbs_ShapeEnum.hxx>
 #include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <gp_Ax2.hxx>
+
+namespace
+{
+static QString shapeTypeToString(const TopAbs_ShapeEnum t)
+{
+  switch (t)
+  {
+    case TopAbs_COMPOUND: return "COMPOUND";
+    case TopAbs_COMPSOLID: return "COMPSOLID";
+    case TopAbs_SOLID: return "SOLID";
+    case TopAbs_SHELL: return "SHELL";
+    case TopAbs_FACE: return "FACE";
+    case TopAbs_WIRE: return "WIRE";
+    case TopAbs_EDGE: return "EDGE";
+    case TopAbs_VERTEX: return "VERTEX";
+    case TopAbs_SHAPE: return "SHAPE";
+  }
+  return "UNKNOWN";
+}
+} // namespace
 
 OccViewportWidget::OccViewportWidget(QWidget* parent)
   : QWidget(parent)
@@ -76,6 +97,7 @@ void OccViewportWidget::addSphere()
   // Ensure triangulation exists for shaded display.
   BRepMesh_IncrementalMesh(shape, 0.5);
   Handle(AIS_Shape) ais = new AIS_Shape(shape);
+  m_objectNames[ais.get()] = QString("Sphere%1").arg(++m_sphereCounter);
   m_context->Display(ais, AIS_Shaded, 0, Standard_True);
 
   m_view->FitAll();
@@ -97,10 +119,51 @@ void OccViewportWidget::addBox()
   // Ensure triangulation exists for shaded display.
   BRepMesh_IncrementalMesh(shape, 0.5);
   Handle(AIS_Shape) ais = new AIS_Shape(shape);
+  m_objectNames[ais.get()] = QString("Box%1").arg(++m_boxCounter);
   m_context->Display(ais, AIS_Shaded, 0, Standard_True);
 
   m_view->FitAll();
   m_view->Redraw();
+}
+
+void OccViewportWidget::emitSelectionInfo()
+{
+  if (m_context.IsNull())
+  {
+    emit selectionInfoChanged("", "");
+    return;
+  }
+
+  // OCCT API differs between versions; use iterator-based selection access
+  // (InitSelected/MoreSelected/SelectedInteractive) for compatibility.
+  m_context->InitSelected();
+  if (!m_context->MoreSelected())
+  {
+    emit selectionInfoChanged("", "");
+    return;
+  }
+
+  Handle(AIS_InteractiveObject) obj = m_context->SelectedInteractive();
+  if (obj.IsNull())
+  {
+    emit selectionInfoChanged("", "");
+    return;
+  }
+
+  const void* key = obj.get();
+  QString name = "Unnamed";
+  if (auto it = m_objectNames.find(key); it != m_objectNames.end())
+  {
+    name = it->second;
+  }
+
+  QString type = QString::fromLatin1(obj->DynamicType()->Name());
+  if (Handle(AIS_Shape) sh = Handle(AIS_Shape)::DownCast(obj); !sh.IsNull())
+  {
+    type += QString(" (%1)").arg(shapeTypeToString(sh->Shape().ShapeType()));
+  }
+
+  emit selectionInfoChanged(name, type);
 }
 
 void OccViewportWidget::applyDisplayMode(int aisDisplayMode)
@@ -255,6 +318,7 @@ void OccViewportWidget::mouseReleaseEvent(QMouseEvent* event)
       m_context->Select(Standard_True);
       m_context->UpdateCurrentViewer();
       m_view->Redraw();
+      emitSelectionInfo();
     }
   }
 
@@ -324,6 +388,7 @@ void OccViewportWidget::initOcc()
 
   Handle(Geom_Axis2Placement) placement = new Geom_Axis2Placement(gp_Ax2());
   Handle(AIS_Trihedron) aisTrihedron = new AIS_Trihedron(placement);
+  m_objectNames[aisTrihedron.get()] = "Trihedron";
   m_context->Display(aisTrihedron, Standard_False);
 
   m_view->FitAll();
