@@ -451,38 +451,43 @@ void OccViewportWidget::mouseReleaseEvent(QMouseEvent* event)
       const int dpr = devicePixelRatio();
       // Ensure detection at click point is up-to-date, then select.
       m_context->MoveTo(releasePos.x() * dpr, releasePos.y() * dpr, m_view, Standard_True);
-      m_context->Select(Standard_True);
+      const bool multi =
+          (event->modifiers() & Qt::ShiftModifier) || (event->modifiers() & Qt::ControlModifier);
+      if (multi)
+      {
+        // Add/toggle selection without clearing existing selection.
+        m_context->ShiftSelect(Standard_True);
+      }
+      else
+      {
+        // Single select (clears previous selection).
+        m_context->Select(Standard_True);
+      }
       m_context->UpdateCurrentViewer();
       m_view->Redraw();
 
-      // Sync selection back into Document (single-select for now).
+      // Sync selection back into Document.
       if (m_doc != nullptr)
       {
+        std::vector<unsigned long long> ids;
         m_context->InitSelected();
-        if (m_context->MoreSelected())
+        while (m_context->MoreSelected())
         {
-          Handle(AIS_InteractiveObject) selObj = m_context->SelectedInteractive();
+          const Handle(AIS_InteractiveObject) selObj = m_context->SelectedInteractive();
           if (!selObj.IsNull())
           {
             const void* key = selObj.get();
             if (auto it = m_aisToId.find(key); it != m_aisToId.end())
             {
-              m_doc->setSelection({it->second});
-            }
-            else
-            {
-              m_doc->setSelection({});
+              ids.push_back(it->second);
             }
           }
-          else
-          {
-            m_doc->setSelection({});
-          }
+          m_context->NextSelected();
         }
-        else
-        {
-          m_doc->setSelection({});
-        }
+
+        // Clicking empty space with no modifier should clear selection.
+        // With Shift/Ctrl, OCCT usually keeps selection unchanged, so ids will reflect that.
+        m_doc->setSelection(ids);
       }
 
       emitSelectionInfo();
