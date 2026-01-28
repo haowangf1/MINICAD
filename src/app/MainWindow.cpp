@@ -15,6 +15,7 @@
 
 #include "commands/CommandManager.h"
 #include "commands/CreatePrimitiveCommand.h"
+#include "commands/DelCommand.h"
 #include "commands/ImportStepCommand.h"
 #include "model/Document.h"
 #include "viewport/OccViewportWidget.h"
@@ -49,6 +50,11 @@ MainWindow::MainWindow(QWidget* parent)
   m_redoAction->setShortcut(QKeySequence::Redo); // Ctrl+Y / Ctrl+Shift+Z
   connect(m_redoAction, &QAction::triggered, m_cmdMgr, &CommandManager::redo);
   editMenu->addAction(m_redoAction);
+
+  m_DelAction = new QAction(tr("Delete"), this);
+  m_DelAction->setShortcut(QKeySequence::Delete);
+  connect(m_DelAction, &QAction::triggered, this, &MainWindow::onDeleteSelected);
+  editMenu->addAction(m_DelAction);
 
   connect(m_cmdMgr, &CommandManager::stackChanged, this, &MainWindow::updateUndoRedoActions);
   updateUndoRedoActions();
@@ -169,6 +175,16 @@ void MainWindow::onCreateSphere()
   if (!m_cmdMgr->doCommand(std::move(cmd), &err))
   {
     QMessageBox::warning(this, tr("Create Sphere"), err);
+  }
+}
+
+void MainWindow::onDeleteSelected()
+{
+  auto cmd = std::make_unique<DelCommand>(m_doc, m_viewport);
+  QString err;
+  if (!m_cmdMgr->doCommand(std::move(cmd), &err))
+  {
+    QMessageBox::warning(this, tr("Delete"), err);
   }
 }
 

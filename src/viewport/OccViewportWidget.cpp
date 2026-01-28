@@ -454,6 +454,37 @@ void OccViewportWidget::mouseReleaseEvent(QMouseEvent* event)
       m_context->Select(Standard_True);
       m_context->UpdateCurrentViewer();
       m_view->Redraw();
+
+      // Sync selection back into Document (single-select for now).
+      if (m_doc != nullptr)
+      {
+        m_context->InitSelected();
+        if (m_context->MoreSelected())
+        {
+          Handle(AIS_InteractiveObject) selObj = m_context->SelectedInteractive();
+          if (!selObj.IsNull())
+          {
+            const void* key = selObj.get();
+            if (auto it = m_aisToId.find(key); it != m_aisToId.end())
+            {
+              m_doc->setSelection({it->second});
+            }
+            else
+            {
+              m_doc->setSelection({});
+            }
+          }
+          else
+          {
+            m_doc->setSelection({});
+          }
+        }
+        else
+        {
+          m_doc->setSelection({});
+        }
+      }
+
       emitSelectionInfo();
     }
   }

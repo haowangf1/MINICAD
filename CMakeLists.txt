@@ -34,6 +34,8 @@ add_executable(minicad WIN32
   src/commands/CommandManager.cpp
   src/commands/CreatePrimitiveCommand.h
   src/commands/CreatePrimitiveCommand.cpp
+  src/commands/DelCommand.h
+  src/commands/DelCommand.cpp
   src/commands/ImportStepCommand.h
   src/commands/ImportStepCommand.cpp
   src/model/SceneObject.h

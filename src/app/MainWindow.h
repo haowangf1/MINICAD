@@ -19,6 +19,7 @@ private slots:
   void onImportStep();
   void onCreateBox();
   void onCreateSphere();
+  void onDeleteSelected();
   void updateUndoRedoActions();
 
 private:
@@ -31,5 +32,6 @@ private:
 
   QAction* m_undoAction = nullptr;
   QAction* m_redoAction = nullptr;
+  QAction* m_DelAction = nullptr;
 };
 
