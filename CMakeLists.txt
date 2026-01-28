@@ -25,25 +25,9 @@ endif()
 # OCCT
 find_package(OpenCASCADE REQUIRED)
 
-add_executable(minicad WIN32
-  src/main.cpp
-  src/app/MainWindow.h
-  src/app/MainWindow.cpp
-  src/commands/ICommand.h
-  src/commands/CommandManager.h
-  src/commands/CommandManager.cpp
-  src/commands/CreatePrimitiveCommand.h
-  src/commands/CreatePrimitiveCommand.cpp
-  src/commands/DelCommand.h
-  src/commands/DelCommand.cpp
-  src/commands/ImportStepCommand.h
-  src/commands/ImportStepCommand.cpp
-  src/model/SceneObject.h
-  src/model/Document.h
-  src/model/Document.cpp
-  src/viewport/OccViewportWidget.h
-  src/viewport/OccViewportWidget.cpp
-)
+file(GLOB_RECURSE SRCFILES "${CMAKE_SOURCE_DIR}/src/*.cpp" "${CMAKE_SOURCE_DIR}/src/*.h")
+    
+add_executable(minicad WIN32 ${SRCFILES})
 
 target_include_directories(minicad PRIVATE
   ${OpenCASCADE_INCLUDE_DIR}

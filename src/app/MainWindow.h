@@ -20,6 +20,7 @@ private slots:
   void onCreateBox();
   void onCreateSphere();
   void onDeleteSelected();
+  void onBoolBrepCommon();
   void updateUndoRedoActions();
 
 private:
@@ -33,5 +34,6 @@ private:
   QAction* m_undoAction = nullptr;
   QAction* m_redoAction = nullptr;
   QAction* m_DelAction = nullptr;
+  QAction* m_BoolBrepCommonAction = nullptr;
 };
 

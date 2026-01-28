@@ -17,6 +17,7 @@
 #include "commands/CreatePrimitiveCommand.h"
 #include "commands/DelCommand.h"
 #include "commands/ImportStepCommand.h"
+#include "commands/BoolBrepCommenCommand.h"
 #include "model/Document.h"
 #include "viewport/OccViewportWidget.h"
 
@@ -55,6 +56,10 @@ MainWindow::MainWindow(QWidget* parent)
   m_DelAction->setShortcut(QKeySequence::Delete);
   connect(m_DelAction, &QAction::triggered, this, &MainWindow::onDeleteSelected);
   editMenu->addAction(m_DelAction);
+  
+  m_BoolBrepCommonAction = new QAction(tr("BoolBrepCommonAction"), this);
+  connect(m_BoolBrepCommonAction, &QAction::triggered, this, &MainWindow::onBoolBrepCommon);
+  editMenu->addAction(m_BoolBrepCommonAction);
 
   connect(m_cmdMgr, &CommandManager::stackChanged, this, &MainWindow::updateUndoRedoActions);
   updateUndoRedoActions();
@@ -186,6 +191,17 @@ void MainWindow::onDeleteSelected()
   {
     QMessageBox::warning(this, tr("Delete"), err);
   }
+}
+
+void MainWindow::onBoolBrepCommon()
+{
+  auto cmd = std::make_unique<BoolBrepCommenCommand>(m_doc, m_viewport);
+  QString err;
+  if (!m_cmdMgr->doCommand(std::move(cmd), &err))
+  {
+    QMessageBox::warning(this, tr("BoolBrepCommenCommand"), err);
+  }
+
 }
 
 void MainWindow::updateUndoRedoActions()
