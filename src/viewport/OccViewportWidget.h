@@ -44,6 +44,7 @@ signals:
   // Request actions on current Document selection (handled by MainWindow/CommandManager).
   void requestHideSelected();
   void requestDeleteSelected();
+  void requestShowAll();
 
 protected:
   QPaintEngine* paintEngine() const override;

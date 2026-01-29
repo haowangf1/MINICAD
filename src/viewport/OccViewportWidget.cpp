@@ -452,18 +452,23 @@ void OccViewportWidget::contextMenuEvent(QContextMenuEvent* event)
     return;
   }
 
-  const auto& sel = m_doc->selection();
-  if (sel.empty())
-  {
-    return;
-  }
-
   QMenu menu(this);
+  QAction* showAllAction = menu.addAction(tr("Show All"));
+  menu.addSeparator();
   QAction* hideAction = menu.addAction(tr("Hide"));
   QAction* delAction = menu.addAction(tr("Delete"));
 
+  const auto& sel = m_doc->selection();
+  const bool hasSel = !sel.empty();
+  hideAction->setEnabled(hasSel);
+  delAction->setEnabled(hasSel);
+
   QAction* chosen = menu.exec(event->globalPos());
-  if (chosen == hideAction)
+  if (chosen == showAllAction)
+  {
+    emit requestShowAll();
+  }
+  else if (chosen == hideAction)
   {
     emit requestHideSelected();
   }

@@ -17,6 +17,7 @@
 #include "commands/CreatePrimitiveCommand.h"
 #include "commands/DelCommand.h"
 #include "commands/HideCommand.h"
+#include "commands/ShowAllCommand.h"
 #include "commands/ImportStepCommand.h"
 #include "commands/BoolBrepCommenCommand.h"
 #include "model/Document.h"
@@ -86,6 +87,8 @@ MainWindow::MainWindow(QWidget* parent)
           this, &MainWindow::onDeleteSelected);
   connect(m_viewport, &OccViewportWidget::requestHideSelected,
           this, &MainWindow::onHideSelected);
+  connect(m_viewport, &OccViewportWidget::requestShowAll,
+          this, &MainWindow::onShowAll);
 
   auto* viewMenu = menuBar()->addMenu(tr("View"));
   auto* fitAllAction = new QAction(tr("Fit All"), this);
@@ -205,6 +208,16 @@ void MainWindow::onHideSelected()
   if (!m_cmdMgr->doCommand(std::move(cmd), &err))
   {
     QMessageBox::warning(this, tr("Hide"), err);
+  }
+}
+
+void MainWindow::onShowAll()
+{
+  auto cmd = std::make_unique<ShowAllCommand>(m_doc, m_viewport);
+  QString err;
+  if (!m_cmdMgr->doCommand(std::move(cmd), &err))
+  {
+    QMessageBox::warning(this, tr("Show All"), err);
   }
 }
 

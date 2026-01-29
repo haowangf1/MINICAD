@@ -21,6 +21,7 @@ private slots:
   void onCreateSphere();
   void onDeleteSelected();
   void onHideSelected();
+  void onShowAll();
   void onBoolBrepCommon();
   void updateUndoRedoActions();
 
