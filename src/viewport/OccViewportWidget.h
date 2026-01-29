@@ -41,12 +41,17 @@ signals:
   // Emitted after selection changes (click select). Empty strings mean "no selection".
   void selectionInfoChanged(const QString& name, const QString& type);
 
+  // Request actions on current Document selection (handled by MainWindow/CommandManager).
+  void requestHideSelected();
+  void requestDeleteSelected();
+
 protected:
   QPaintEngine* paintEngine() const override;
   void paintEvent(QPaintEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
   void showEvent(QShowEvent* event) override;
 
+  void contextMenuEvent(QContextMenuEvent* event) override;
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;

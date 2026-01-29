@@ -3,7 +3,9 @@
 #include "model/Document.h"
 #include "model/SceneObject.h"
 
+#include <QContextMenuEvent>
 #include <QMouseEvent>
+#include <QMenu>
 #include <QWheelEvent>
 #include <QPaintEngine>
 #include <QShowEvent>
@@ -436,6 +438,39 @@ void OccViewportWidget::mouseMoveEvent(QMouseEvent* event)
 
   m_lastPos = p;
   QWidget::mouseMoveEvent(event);
+}
+
+void OccViewportWidget::contextMenuEvent(QContextMenuEvent* event)
+{
+  if (event == nullptr)
+  {
+    return;
+  }
+
+  if (m_doc == nullptr)
+  {
+    return;
+  }
+
+  const auto& sel = m_doc->selection();
+  if (sel.empty())
+  {
+    return;
+  }
+
+  QMenu menu(this);
+  QAction* hideAction = menu.addAction(tr("Hide"));
+  QAction* delAction = menu.addAction(tr("Delete"));
+
+  QAction* chosen = menu.exec(event->globalPos());
+  if (chosen == hideAction)
+  {
+    emit requestHideSelected();
+  }
+  else if (chosen == delAction)
+  {
+    emit requestDeleteSelected();
+  }
 }
 
 void OccViewportWidget::mouseReleaseEvent(QMouseEvent* event)
